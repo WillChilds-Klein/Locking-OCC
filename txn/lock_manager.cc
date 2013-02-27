@@ -33,7 +33,7 @@ bool LockManagerA::WriteLock(Txn* txn, const Key& key) {
 
   if(d->empty()){ // lock will be immediately granted, else not.
     d->push_back(*lreq); // put new lock req onto back of txn deque in lock_table_
-    txn_waits_[txn]++; // increment lock wait counter
+    //txn_waits_[txn]++; // increment lock wait counter
     return true;
   }
 
@@ -84,9 +84,9 @@ LockMode LockManagerA::Status(const Key& key, vector<Txn*>* owners) {
 
   if(d->empty())
       return UNLOCKED;
+      
   while(!owners->empty()) // delete previous owners
       owners->pop_back();
-
   owners->push_back(d->front().txn_); 
   return d->front().mode_;
 }
@@ -96,24 +96,131 @@ LockManagerB::LockManagerB(deque<Txn*>* ready_txns) {
 }
 
 bool LockManagerB::WriteLock(Txn* txn, const Key& key) {
-  return true;
+  LockRequest *lreq = new LockRequest(EXCLUSIVE, txn);
+  deque<LockRequest> *d;
+  if(lock_table_.count(key) == 0){
+    d = new deque<LockRequest>;
+    lock_table_[key] = d; 
+  }
+  else{
+    d = lock_table_[key]; //get deque at key in lock_table_
+  }
+
+  deque<LockRequest>::iterator i;
+  for(i = d->begin(); i != d->end(); i++){ // check to see if duplicate txn's present
+    if(i->txn_ == txn)
+      DIE("Duplicate txn's found in txn que for same key!");
+  }
+
+  if(txn_waits_.count(txn) == 0) // check if txn is in txn_waits_
+    txn_waits_[txn] = 0;// if not, put it in
+  txn_waits_[txn]++; // increment lock wait counter
+
+  if(d->empty()){ // lock will be immediately granted, else not.
+    d->push_back(*lreq); // put new lock req onto back of txn deque in lock_table_
+    txn_waits_[txn]++; // increment lock wait counter
+    return true;
+  }
+
+  d->push_back(*lreq); // put new lock req onto back of txn deque in lock_table_
+
+  return false; // lock will not be immediately granted.
 }
 
 bool LockManagerB::ReadLock(Txn* txn, const Key& key) {
-  // multiple things try to access -->>> SHARED!!!
-  return true;
+  LockRequest *lreq = new LockRequest(SHARED, txn);
+  deque<LockRequest> *d;
+  if(lock_table_.count(key) == 0){
+    d = new deque<LockRequest>;
+    lock_table_[key] = d; 
+  }
+  else{
+    d = lock_table_[key]; //get deque at key in lock_table_
+  }
+
+  deque<LockRequest>::iterator i;
+  int allSharedFlag = 1;
+  for(i = d->begin(); i != d->end(); i++){ // check to see if duplicate txn's present
+    if(i->mode_ != SHARED) // check to see if all members are shared
+      allSharedFlag--;
+    if(i->txn_ == txn)
+      DIE("Duplicate txn's found in txn que for same key!");
+  }
+
+  if(txn_waits_.count(txn) == 0) // check if txn is in txn_waits_
+    txn_waits_[txn] = 0;// if not, put it in
+  txn_waits_[txn]++; // increment lock wait counter
+
+  if(d->empty() || allSharedFlag){ // lock will be immediately granted, else not.
+    d->push_back(*lreq); // put new lock req onto back of txn deque in lock_table_
+    //txn_waits_[txn]++; // increment lock wait counter
+    return true;
+  }
+
+  d->push_back(*lreq); // put new lock req onto back of txn deque in lock_table_
+
+  return false; // lock will not be immediately granted.
 }
 
 void LockManagerB::Release(Txn* txn, const Key& key) {
-  // CPSC 438/538:
-  //
-  // Implement this method!
+  if(lock_table_.count(key) == 0){
+    return; // get outta here if no locks at key
+  }
+  deque<LockRequest> *d = lock_table_[key];
+
+  if(d->front().txn_ == txn){ // <-- review logic of this portion...problem's here.
+    d->pop_front(); // delete head
+    if(d->size() > 0){ // put next elt on rdytxns
+      txn_waits_[d->front().txn_]--; // put first on txn_waits_ regardless
+      if(txn_waits_[d->front().txn_] == 0){ // has become 0, put first on rdytxns
+        ready_txns_->push_back(d->front().txn_);
+        if(d->front().mode_ == SHARED){ // head of deque is SHARED, check rest
+          deque<LockRequest>::iterator i = d->begin()+1; // go thru list for all consec SHARED txns
+          while(i != d->end() && i->mode_ == SHARED){
+            txn_waits_[i->txn_]--; // put first on txn_waits_ regardless
+            if(txn_waits_[i->txn_] == 0) // put first on rdytxns
+              ready_txns_->push_back(i->txn_);
+            i++;
+          }
+        }
+      }
+    }
+    return;
+  }
+
+  deque<LockRequest>::iterator i;
+  for(i = d->begin(); i != d->end(); i++){ // walk through deque, starting with head
+    if(i->txn_ == txn){
+      d->erase(i); // issues with continuing to walk??
+      return; // exit if no check for mult instances of txn in deque
+    }
+  }
+  return;
 }
 
 LockMode LockManagerB::Status(const Key& key, vector<Txn*>* owners) {
-  // CPSC 438/538:
-  //
-  // Implement this method!
-  return UNLOCKED;
+  
+  if(lock_table_.count(key) == 0){ // no locks on key
+    return UNLOCKED;
+  }
+  deque<LockRequest> *d = lock_table_[key]; // get deque at key
+
+  if(d->empty())
+      return UNLOCKED;
+  else if(d->front().mode_ == EXCLUSIVE){
+    owners->pop_back(); // delete previous owner
+    owners->push_back(d->front().txn_); 
+    return d->front().mode_;
+  }
+
+  while(!owners->empty()) // delete previous owners
+      owners->pop_back();
+
+  deque<LockRequest>::iterator i = d->begin(); // go thru list for all consec SHARED txns
+  while(i->mode_ == SHARED && i != d->end()){
+    owners->push_back(i->txn_); 
+    i++;
+  }
+  return d->front().mode_;
 }
 
