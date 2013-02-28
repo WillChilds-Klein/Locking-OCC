@@ -156,37 +156,42 @@ void TxnProcessor::RunLockingScheduler() {
 
 void TxnProcessor::RunOCCScheduler() {
   Txn* txn;
-  bool validationFailure; // Set to true if validation failed.
-  
+  bool validationFailure;  // Set to true if validation failed.
+
   while (tp_.Active()) {
     // Start processing the next incoming transaction request.
     if (txn_requests_.Pop(&txn)) {
       txn->occ_start_time_ = GetTime();
-      tp_.RunTask(
-        new Method<TxnProcessor, void, Txn*>(this, &TxnProcessor::ExecuteTxn, txn));
+      tp_.RunTask(  // Run the transaction in a new thread.
+        new Method<TxnProcessor, void, Txn*>(
+          this, &TxnProcessor::ExecuteTxn, txn));
     }
-    
+
     while (completed_txns_.Pop(&txn)) {
       // Here, we validate the transaction.
       if (txn->Status() == COMPLETED_C) {
-        validationFailure = false; // Valid until proven guilty!
-      
-        for (set<Key>::iterator itr = txn->readset_.begin(); itr != txn->readset_.end(); ++itr) { // Check for readset conflicts.
+        validationFailure = false;  // Valid until proven guilty!
+
+        // Check for readset conflicts.
+        for (set<Key>::iterator itr = txn->readset_.begin();
+              itr != txn->readset_.end(); ++itr) {
           if (storage_.Timestamp(*itr) >= txn->occ_start_time_) {
             validationFailure = true;
             break;
           }
         }
-        
+
+        // Check for writeset conflicts.
         if (!validationFailure) {
-          for (set<Key>::iterator itr = txn->writeset_.begin(); itr != txn->writeset_.end(); ++itr) { // Check for writeset conflicts.
+          for (set<Key>::iterator itr = txn->writeset_.begin();
+                itr != txn->writeset_.end(); ++itr) {
             if (storage_.Timestamp(*itr) >= txn->occ_start_time_) {
               validationFailure = true;
               break;
             }
           }
         }
-        
+
         // Commit/restart
         if (validationFailure) {
           txn->status_ = INCOMPLETE;
@@ -195,7 +200,7 @@ void TxnProcessor::RunOCCScheduler() {
           txn_requests_.Push(txn);
         } else {
           ApplyWrites(txn);
-          txn_results_.Push(txn); // Return result to client.
+          txn_results_.Push(txn);  // Return result to client.
         }
       } else if (txn->Status() == COMPLETED_A) {
         txn->status_ = ABORTED;
@@ -209,34 +214,36 @@ void TxnProcessor::RunOCCScheduler() {
 
 void TxnProcessor::RunOCCParallelScheduler() {
   Txn *txn;
-  const int n = 30; // For now.
-  const int m = 50; // For now.
+  const int n = 10;  // For now.
+  const int m = 5;  // For now.
   int i;
   set<Txn*> activeSetCopy;
-  
+
   while (tp_.Active()) {
     // Start processing the next incoming transaction request.
     if (txn_requests_.Pop(&txn)) {
       txn->occ_start_time_ = GetTime();
-      tp_.RunTask(
-        new Method<TxnProcessor, void, Txn*>(this, &TxnProcessor::ExecuteTxn, txn));
+      tp_.RunTask( // Run the transaction in a new thread.
+        new Method<TxnProcessor, void, Txn*>(
+          this, &TxnProcessor::ExecuteTxn, txn));
     }
-    
+
     for (i = 0; i < n; i++) {
       if (completed_txns_.Pop(&txn)) {
-        activeSetCopy = active_set_.GetSet(); // Copy the active set.
-        active_set_.Insert(txn); // Add this transaction to the active set.
-        tp_.RunTask(
-          new Method<TxnProcessor, void, Txn*, set<Txn*> >(this, &TxnProcessor::ValidateTxnParallel, txn, activeSetCopy));
+        activeSetCopy = active_set_.GetSet();  // Copy the active set.
+        active_set_.Insert(txn);  // Add this transaction to the active set.
+        tp_.RunTask(  // Run the validation in a new thread.
+          new Method<TxnProcessor, void, Txn*, set<Txn*> >(
+            this, &TxnProcessor::ValidateTxnParallel, txn, activeSetCopy));
       } else {
-        break; // If there's nothing left to validate, break out of the loop.
+        break;  // If there's nothing left to validate, break out of the loop.
       }
     }
-    
+
     for (i = 0; i < m; i++) {
       if (validated_txns_.Pop(&txn)) {
-        active_set_.Erase(txn); // Remove the transaction from the active set.
-        if (txn->is_valid_) { // If transaction is valid, mark as committed.
+        active_set_.Erase(txn);  // Remove the transaction from the active set.
+        if (txn->is_valid_) {  // If transaction is valid, mark as committed.
           txn->status_ = COMMITTED;
           // Return result to client.
           txn_results_.Push(txn);
@@ -245,10 +252,11 @@ void TxnProcessor::RunOCCParallelScheduler() {
           txn->status_ = INCOMPLETE;
           txn->reads_.clear();
           txn->writes_.clear();
-          txn_requests_.Push(txn); // Transaction will re-start next time we check for a new transaction request.
+          txn_requests_.Push(txn);  // Transaction will re-start next time we
+                                    // check for a new transaction request.
         }
       } else {
-        break; // If there's nothing left to commit, break out of the loop.
+        break;  // If there's nothing left to commit, break out of the loop.
       }
     }
   }
@@ -258,40 +266,47 @@ void TxnProcessor::RunOCCParallelScheduler() {
 // Written by JME; not in original code.
 void TxnProcessor::ValidateTxnParallel(Txn* txn, set<Txn*> activeSet) {
   bool validationFailure;
-  
+
   if (txn->Status() == COMPLETED_C) {
-    validationFailure = false; // Valid until proven guilty!
-  
-    for (set<Key>::iterator itr = txn->readset_.begin(); itr != txn->readset_.end(); ++itr) { // Check for readset conflicts.
+    validationFailure = false;  // Valid until proven guilty!
+
+    // Check for readset conflicts.
+    for (set<Key>::iterator itr = txn->readset_.begin();
+          itr != txn->readset_.end(); ++itr) {
       if (storage_.Timestamp(*itr) >= txn->occ_start_time_) {
         validationFailure = true;
         break;
       }
     }
-    
+
+    // Check for writeset conflicts.
     if (!validationFailure) {
-      for (set<Key>::iterator itr = txn->writeset_.begin(); itr != txn->writeset_.end(); ++itr) { // Check for writeset conflicts.
+      for (set<Key>::iterator itr = txn->writeset_.begin();
+            itr != txn->writeset_.end(); ++itr) {
         if (storage_.Timestamp(*itr) >= txn->occ_start_time_) {
           validationFailure = true;
           break;
         }
       }
     }
-    
+
     // Now we check for conflicts with the active set.
     if (!validationFailure) {
-      for (set<Txn*>::iterator t = activeSet.begin(); t != activeSet.end() && !validationFailure; ++t) {
-      
-        // Check for conflicts between txn's writeset and t's readset or writeset.
-        for (set<Key>::iterator itr = txn->writeset_.begin(); itr != txn->writeset_.end(); ++itr) {
-          if ((*t)->readset_.find(*itr) != (*t)->readset_.end() || (*t)->writeset_.find(*itr) != (*t)->writeset_.end()) {
-            validationFailure = true;
+      for (set<Txn*>::iterator t = activeSet.begin();
+            t != activeSet.end() && !validationFailure; ++t) {
+        // Check for conflicts between txn's writeset and t's readset
+        // or writeset.
+        for (set<Key>::iterator itr = txn->writeset_.begin();
+              itr != txn->writeset_.end(); ++itr) {
+          if ((*t)->readset_.find(*itr) != (*t)->readset_.end() ||
+              (*t)->writeset_.find(*itr) != (*t)->writeset_.end()) {
+            validationFailure = true; // A conflict was found.
             break;
           }
         }
       }
     }
-  
+
     // Write if valid; save validation result.
     if (validationFailure) {
       txn->is_valid_ = false;
@@ -299,8 +314,9 @@ void TxnProcessor::ValidateTxnParallel(Txn* txn, set<Txn*> activeSet) {
       ApplyWrites(txn);
       txn->is_valid_ = true;
     }
-    
-    validated_txns_.Push(txn); // Push the transaction onto our list of those to be validated.
+
+    validated_txns_.Push(txn);  // Push the transaction onto our list of those
+                                // to be validated.
   } else if (txn->Status() == COMPLETED_A) {
     txn->status_ = ABORTED;
   } else {

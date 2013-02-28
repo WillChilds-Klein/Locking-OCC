@@ -83,7 +83,7 @@ LockMode LockManagerA::Status(const Key& key, vector<Txn*>* owners) {
 
   if (d->empty())
     return UNLOCKED;
-
+  
   while (!owners->empty())  // delete previous owners
     owners->pop_back();
   owners->push_back(d->front().txn_);

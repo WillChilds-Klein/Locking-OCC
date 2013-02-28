@@ -6,6 +6,7 @@
 
 #include <deque>
 #include <map>
+#include <set>
 #include <string>
 
 #include "txn/common.h"
@@ -18,6 +19,7 @@
 
 using std::deque;
 using std::map;
+using std::set;
 using std::string;
 
 // The TxnProcessor supports five different execution modes, corresponding to
@@ -75,7 +77,7 @@ class TxnProcessor {
   //
   // Requires: txn->Status() is COMPLETED_C.
   void ApplyWrites(Txn* txn);
-  
+
   // Validates a transaction, applying writes if valid, and
   // saves validation result in txn.
   // Written by JME; not in original code.
@@ -105,14 +107,14 @@ class TxnProcessor {
 
   // Queue of completed (but not yet committed/aborted) transactions.
   AtomicQueue<Txn*> completed_txns_;
-  
+
   // Queue of validated (but not yet committed/aborted) transactions.
   AtomicQueue<Txn*> validated_txns_;
 
   // Queue of transaction results (already committed or aborted) to be returned
   // to client.
   AtomicQueue<Txn*> txn_results_;
-  
+
   // Active Set - added by JME
   AtomicSet<Txn*> active_set_;
 

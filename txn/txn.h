@@ -106,7 +106,7 @@ class Txn {
 
   // Start time (used for OCC and MVCC).
   double occ_start_time_;
-  
+
   // Whether the transaction was validated to be valid or not.
   bool is_valid_;
 };
