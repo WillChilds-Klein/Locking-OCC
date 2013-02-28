@@ -106,4 +106,6 @@ obj/txn/storage.o: txn/storage.cc txn/storage.h \
  /usr/include/c++/4.6/bits/stl_multiset.h /usr/include/c++/4.6/vector \
  /usr/include/c++/4.6/bits/stl_vector.h \
  /usr/include/c++/4.6/bits/stl_bvector.h \
- /usr/include/c++/4.6/bits/vector.tcc
+ /usr/include/c++/4.6/bits/vector.tcc utils/atomic.h \
+ /usr/include/c++/4.6/queue /usr/include/c++/4.6/bits/stl_heap.h \
+ /usr/include/c++/4.6/bits/stl_queue.h utils/mutex.h

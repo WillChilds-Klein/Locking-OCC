@@ -79,7 +79,7 @@ class TxnProcessor {
   // Validates a transaction, applying writes if valid, and
   // saves validation result in txn.
   // Written by JME; not in original code.
-  void ValidateTxnParallel(Txn* txn, set<Txn*> activeSet);
+  void ValidateTxnParallel(Txn* txn);
 
   // Concurrency control mechanism the TxnProcessor is currently using.
   CCMode mode_;

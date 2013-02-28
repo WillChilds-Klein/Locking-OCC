@@ -37,29 +37,43 @@ obj/txn/txn.o: txn/txn.cc txn/txn.h /usr/include/c++/4.6/map \
  /usr/include/c++/4.6/bits/stl_bvector.h \
  /usr/include/c++/4.6/bits/functional_hash.h \
  /usr/include/c++/4.6/bits/hash_bytes.h \
- /usr/include/c++/4.6/bits/vector.tcc txn/common.h /usr/include/assert.h \
+ /usr/include/c++/4.6/bits/vector.tcc utils/atomic.h \
+ /usr/include/c++/4.6/queue /usr/include/c++/4.6/deque \
+ /usr/include/c++/4.6/bits/stl_deque.h \
+ /usr/include/c++/4.6/bits/deque.tcc /usr/include/c++/4.6/bits/stl_heap.h \
+ /usr/include/c++/4.6/bits/stl_queue.h \
+ /usr/include/c++/4.6/tr1/unordered_map /usr/include/c++/4.6/utility \
+ /usr/include/c++/4.6/bits/stl_relops.h \
+ /usr/include/c++/4.6/bits/stringfwd.h \
+ /usr/include/c++/4.6/tr1/type_traits \
+ /usr/include/c++/4.6/tr1/functional_hash.h \
+ /usr/include/c++/4.6/tr1/hashtable.h \
+ /usr/include/c++/4.6/tr1/hashtable_policy.h \
+ /usr/include/c++/4.6/tr1/unordered_map.h /usr/include/assert.h \
+ utils/mutex.h /usr/include/pthread.h /usr/include/endian.h \
+ /usr/include/bits/endian.h /usr/include/bits/byteswap.h \
+ /usr/include/sched.h /usr/include/bits/types.h \
+ /usr/include/bits/typesizes.h \
+ /usr/lib64/gcc/x86_64-suse-linux/4.6/include/stddef.h \
+ /usr/include/time.h /usr/include/bits/sched.h /usr/include/bits/time.h \
+ /usr/include/bits/timex.h /usr/include/xlocale.h \
+ /usr/include/bits/pthreadtypes.h /usr/include/bits/setjmp.h txn/common.h \
  /usr/lib64/gcc/x86_64-suse-linux/4.6/include/stdint.h \
  /usr/include/stdint.h /usr/include/bits/wchar.h /usr/include/sys/time.h \
- /usr/include/bits/types.h /usr/include/bits/typesizes.h \
- /usr/include/time.h /usr/include/bits/time.h /usr/include/sys/select.h \
- /usr/include/bits/select.h /usr/include/bits/sigset.h \
- /usr/include/c++/4.6/cstdio /usr/include/stdio.h \
- /usr/lib64/gcc/x86_64-suse-linux/4.6/include/stddef.h \
- /usr/include/libio.h /usr/include/_G_config.h /usr/include/wchar.h \
+ /usr/include/sys/select.h /usr/include/bits/select.h \
+ /usr/include/bits/sigset.h /usr/include/c++/4.6/cstdio \
+ /usr/include/stdio.h /usr/include/libio.h /usr/include/_G_config.h \
+ /usr/include/wchar.h \
  /usr/lib64/gcc/x86_64-suse-linux/4.6/include/stdarg.h \
  /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h \
  /usr/include/c++/4.6/cstdlib /usr/include/stdlib.h \
  /usr/include/bits/waitflags.h /usr/include/bits/waitstatus.h \
- /usr/include/endian.h /usr/include/bits/endian.h \
- /usr/include/bits/byteswap.h /usr/include/xlocale.h \
  /usr/include/sys/types.h /usr/include/sys/sysmacros.h \
- /usr/include/bits/pthreadtypes.h /usr/include/alloca.h \
- /usr/include/c++/4.6/iostream /usr/include/c++/4.6/ostream \
- /usr/include/c++/4.6/ios /usr/include/c++/4.6/iosfwd \
- /usr/include/c++/4.6/bits/stringfwd.h \
- /usr/include/c++/4.6/bits/postypes.h /usr/include/c++/4.6/cwchar \
- /usr/include/c++/4.6/bits/char_traits.h /usr/include/c++/4.6/cstdint \
- /usr/include/c++/4.6/bits/localefwd.h \
+ /usr/include/alloca.h /usr/include/c++/4.6/iostream \
+ /usr/include/c++/4.6/ostream /usr/include/c++/4.6/ios \
+ /usr/include/c++/4.6/iosfwd /usr/include/c++/4.6/bits/postypes.h \
+ /usr/include/c++/4.6/cwchar /usr/include/c++/4.6/bits/char_traits.h \
+ /usr/include/c++/4.6/cstdint /usr/include/c++/4.6/bits/localefwd.h \
  /usr/include/c++/4.6/x86_64-suse-linux/bits/c++locale.h \
  /usr/include/c++/4.6/clocale /usr/include/locale.h \
  /usr/include/bits/locale.h /usr/include/c++/4.6/cctype \
@@ -67,8 +81,6 @@ obj/txn/txn.o: txn/txn.cc txn/txn.h /usr/include/c++/4.6/map \
  /usr/include/c++/4.6/ext/atomicity.h \
  /usr/include/c++/4.6/x86_64-suse-linux/bits/gthr.h \
  /usr/include/c++/4.6/x86_64-suse-linux/bits/gthr-default.h \
- /usr/include/pthread.h /usr/include/sched.h /usr/include/bits/sched.h \
- /usr/include/bits/timex.h /usr/include/bits/setjmp.h \
  /usr/include/unistd.h /usr/include/bits/posix_opt.h \
  /usr/include/bits/environments.h /usr/include/bits/confname.h \
  /usr/include/getopt.h \
@@ -94,5 +106,4 @@ obj/txn/txn.o: txn/txn.cc txn/txn.h /usr/include/c++/4.6/map \
  /usr/include/c++/4.6/bits/locale_facets.tcc \
  /usr/include/c++/4.6/bits/basic_ios.tcc \
  /usr/include/c++/4.6/bits/ostream.tcc /usr/include/c++/4.6/istream \
- /usr/include/c++/4.6/bits/istream.tcc /usr/include/c++/4.6/utility \
- /usr/include/c++/4.6/bits/stl_relops.h
+ /usr/include/c++/4.6/bits/istream.tcc

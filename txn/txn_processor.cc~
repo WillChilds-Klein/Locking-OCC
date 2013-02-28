@@ -286,10 +286,7 @@ void TxnProcessor::ValidateTxnParallel(Txn* txn, set<Txn*> activeSet) {
       
         // Check for conflicts between txn's writeset and t's readset or writeset.
         for (set<Key>::iterator itr = txn->writeset_.begin(); itr != txn->writeset_.end(); ++itr) {
-          if ((*t)->readset_.find(*itr) != (*t)->readset_.end() || (*t)->writeset_.find(*itr) != (*t)->writeset_.end()) {
-            validationFailure = true;
-            break;
-          }
+          if (
         }
       }
     }
