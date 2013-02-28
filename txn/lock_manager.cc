@@ -15,7 +15,7 @@ bool LockManagerA::WriteLock(Txn* txn, const Key& key) {
   deque<LockRequest> *d;
   if(lock_table_.count(key) == 0){
     d = new deque<LockRequest>;
-    lock_table_[key] = d; 
+    lock_table_[key] = d;
   }
   else{
     d = lock_table_[key]; //get deque at key in lock_table_
@@ -29,15 +29,14 @@ bool LockManagerA::WriteLock(Txn* txn, const Key& key) {
 
   if(txn_waits_.count(txn) == 0) // check if txn is in txn_waits_
     txn_waits_[txn] = 0;// if not, put it in
-  txn_waits_[txn]++; // increment lock wait counter
 
   if(d->empty()){ // lock will be immediately granted, else not.
     d->push_back(*lreq); // put new lock req onto back of txn deque in lock_table_
-    //txn_waits_[txn]++; // increment lock wait counter
     return true;
   }
 
   d->push_back(*lreq); // put new lock req onto back of txn deque in lock_table_
+  txn_waits_[txn]++; // increment lock wait counter
 
   return false; // lock will not be immediately granted.
 }
@@ -55,7 +54,7 @@ void LockManagerA::Release(Txn* txn, const Key& key) {
   }
   deque<LockRequest> *d = lock_table_[key];
 
-  if(d->front().txn_ == txn){ 
+  if(d->front().txn_ == txn){
     d->pop_front(); // delete head
     if(d->size() > 0){ // put next elt on rdytxns
       txn_waits_[d->front().txn_]--;
@@ -87,7 +86,7 @@ LockMode LockManagerA::Status(const Key& key, vector<Txn*>* owners) {
       
   while(!owners->empty()) // delete previous owners
       owners->pop_back();
-  owners->push_back(d->front().txn_); 
+  owners->push_back(d->front().txn_);
   return d->front().mode_;
 }
 
@@ -100,7 +99,7 @@ bool LockManagerB::WriteLock(Txn* txn, const Key& key) {
   deque<LockRequest> *d;
   if(lock_table_.count(key) == 0){
     d = new deque<LockRequest>;
-    lock_table_[key] = d; 
+    lock_table_[key] = d;
   }
   else{
     d = lock_table_[key]; //get deque at key in lock_table_
@@ -114,15 +113,14 @@ bool LockManagerB::WriteLock(Txn* txn, const Key& key) {
 
   if(txn_waits_.count(txn) == 0) // check if txn is in txn_waits_
     txn_waits_[txn] = 0;// if not, put it in
-  txn_waits_[txn]++; // increment lock wait counter
 
   if(d->empty()){ // lock will be immediately granted, else not.
     d->push_back(*lreq); // put new lock req onto back of txn deque in lock_table_
-    txn_waits_[txn]++; // increment lock wait counter
     return true;
   }
 
   d->push_back(*lreq); // put new lock req onto back of txn deque in lock_table_
+  txn_waits_[txn]++; // increment lock wait counter
 
   return false; // lock will not be immediately granted.
 }
@@ -132,7 +130,7 @@ bool LockManagerB::ReadLock(Txn* txn, const Key& key) {
   deque<LockRequest> *d;
   if(lock_table_.count(key) == 0){
     d = new deque<LockRequest>;
-    lock_table_[key] = d; 
+    lock_table_[key] = d;
   }
   else{
     d = lock_table_[key]; //get deque at key in lock_table_
@@ -149,15 +147,15 @@ bool LockManagerB::ReadLock(Txn* txn, const Key& key) {
 
   if(txn_waits_.count(txn) == 0) // check if txn is in txn_waits_
     txn_waits_[txn] = 0;// if not, put it in
-  txn_waits_[txn]++; // increment lock wait counter
+  //txn_waits_[txn]++; // increment lock wait counter
 
   if(d->empty() || allSharedFlag){ // lock will be immediately granted, else not.
     d->push_back(*lreq); // put new lock req onto back of txn deque in lock_table_
-    //txn_waits_[txn]++; // increment lock wait counter
     return true;
   }
 
   d->push_back(*lreq); // put new lock req onto back of txn deque in lock_table_
+  txn_waits_[txn]++; // increment lock wait counter
 
   return false; // lock will not be immediately granted.
 }
@@ -172,41 +170,36 @@ void LockManagerB::Release(Txn* txn, const Key& key) {
     d->pop_front(); // release lock
     return;
   }
-  else if(d->front().txn_ == txn && d-> size() > 1 && d->at(1).mode_ == EXCLUSIVE){// just like exc case
+  else if(d->front().txn_ == txn && d->size() > 1 && d->at(1).mode_ == EXCLUSIVE){// just like exc case
     d->pop_front(); // release lock
     txn_waits_[d->front().txn_]--; // decrement txncnt in txn_waits_
     if(txn_waits_[d->front().txn_] == 0)
       ready_txns_->push_back(d->front().txn_);
     return;
   }
-  else{ // otherwise, walk through all leading shared's to find txn
-    if(d->front().txn_ == txn){
-      d->pop_front(); // release lock
-      txn_waits_[d->front().txn_]--; // decrement txncnt in txn_waits_
-      if(txn_waits_[d->front().txn_] == 0)
-        ready_txns_->push_back(d->front().txn_);
-    }
+  else if(d->front().txn_ == txn && d->size() > 1 && d->at(1).mode_ == SHARED){
+    d->pop_front(); // release lock
     deque<LockRequest>::iterator i;
-    for(i = d->begin(); i != d->end() && i->mode_ == SHARED; i++){
+    for(i = d->begin(); i->mode_ == SHARED && i != d->end(); i++){
       txn_waits_[i->txn_]--; // decrement txncnt in txn_waits_
       if(txn_waits_[i->txn_] == 0)
         ready_txns_->push_back(i->txn_);
-      if(i->txn_ == txn){
-        d->erase(i); // issues with continuing to walk??
-        return; // exit if no check for mult instances of txn in deque
-      }
     }
+    return;
   }
 
   deque<LockRequest>::iterator i;
   for(i = d->begin(); i != d->end(); i++){ // walk through deque, starting with head
     if(i->txn_ == txn){
       txn_waits_[i->txn_]--; // decrement txncnt in txn_waits_
-      if(txn_waits_[i->txn_] == 0)
-        ready_txns_->push_back(i->txn_);
       d->erase(i); // issues with continuing to walk??
-      return; // exit if no check for mult instances of txn in deque
+      break; // exit if no check for mult instances of txn in deque
     }
+  }
+  for(i = d->begin(); i->mode_ == SHARED && i != d->end(); i++){
+    txn_waits_[i->txn_]--; // decrement txncnt in txn_waits_
+    if(txn_waits_[i->txn_] == 0)
+      ready_txns_->push_back(i->txn_);
   }
   return;
 }
@@ -222,7 +215,7 @@ LockMode LockManagerB::Status(const Key& key, vector<Txn*>* owners) {
       return UNLOCKED;
   else if(d->front().mode_ == EXCLUSIVE){
     owners->pop_back(); // delete previous owner
-    owners->push_back(d->front().txn_); 
+    owners->push_back(d->front().txn_);
     return d->front().mode_;
   }
 
@@ -231,7 +224,7 @@ LockMode LockManagerB::Status(const Key& key, vector<Txn*>* owners) {
 
   deque<LockRequest>::iterator i = d->begin(); // go thru list for all consec SHARED txns
   while(i->mode_ == SHARED && i != d->end()){
-    owners->push_back(i->txn_); 
+    owners->push_back(i->txn_);
     i++;
   }
   return d->front().mode_;
