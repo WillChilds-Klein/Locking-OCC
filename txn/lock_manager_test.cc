@@ -14,8 +14,6 @@ TEST(LockManagerA_SimpleLocking) {
   LockManagerA lm(&ready_txns);
   vector<Txn*> owners;
 
-  //printf("!!\n");
-
   Txn* t1 = reinterpret_cast<Txn*>(1);
   Txn* t2 = reinterpret_cast<Txn*>(2);
   Txn* t3 = reinterpret_cast<Txn*>(3);
@@ -58,8 +56,6 @@ TEST(LockManagerA_SimpleLocking) {
   EXPECT_EQ(t3, owners[0]);
   EXPECT_EQ(3, ready_txns.size());
   EXPECT_EQ(t3, ready_txns.at(2));
-
-  //printf("made thru 5.\n");
 
   END;
 }
