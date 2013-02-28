@@ -155,18 +155,8 @@ void TxnProcessor::RunLockingScheduler() {
 }
 
 void TxnProcessor::RunOCCScheduler() {
-  // CPSC 438/538:
-  //
-  // Implement this method! Note that implementing OCC may require
-  // modifications to the Storage engine (and therefore to the 'ExecuteTxn'
-  // method below).
-  //
-  // [For now, run serial scheduler in order to make it through the test
-  // suite]
-  
-  // TODO: What changes to ExecuteTxn or the Storage engine need to be made?
   Txn* txn;
-  bool validationFailure; // true if validation failed.
+  bool validationFailure; // Set to true if validation failed.
   
   while (tp_.Active()) {
     // Start processing the next incoming transaction request.
@@ -196,13 +186,16 @@ void TxnProcessor::RunOCCScheduler() {
             }
           }
         }
-      
+        
         // Commit/restart
         if (validationFailure) {
-          txn_requests_.Push(txn); // Transaction will re-start next time we check for a new transaction request.
+          txn->status_ = INCOMPLETE;
+          txn->reads_.clear();
+          txn->writes_.clear();
+          txn_requests_.Push(txn);
         } else {
           ApplyWrites(txn);
-          txn->status_ = COMMITTED;
+          txn_results_.Push(txn); // Return result to client.
         }
       } else if (txn->Status() == COMPLETED_A) {
         txn->status_ = ABORTED;
@@ -216,8 +209,8 @@ void TxnProcessor::RunOCCScheduler() {
 
 void TxnProcessor::RunOCCParallelScheduler() {
   Txn *txn;
-  const int n = 1; // For now.
-  const int m = 1; // For now.
+  const int n = 10; // For now.
+  const int m = 5; // For now.
   int i;
   set<Txn*> activeSetCopy;
   
@@ -245,8 +238,13 @@ void TxnProcessor::RunOCCParallelScheduler() {
         active_set_.Erase(txn); // Remove the transaction from the active set.
         if (txn->is_valid_) { // If transaction is valid, mark as committed.
           txn->status_ = COMMITTED;
+          // Return result to client.
+          txn_results_.Push(txn);
           // Cleanup. (What does this mean?)
         } else {
+          txn->status_ = INCOMPLETE;
+          txn->reads_.clear();
+          txn->writes_.clear();
           txn_requests_.Push(txn); // Transaction will re-start next time we check for a new transaction request.
         }
       } else {
@@ -282,7 +280,7 @@ void TxnProcessor::ValidateTxnParallel(Txn* txn, set<Txn*> activeSet) {
     
     // Now we check for conflicts with the active set.
     if (!validationFailure) {
-      for (set<Txn*>::iterator t = activeSet.begin(); t != activeSet.end(); ++t) {
+      for (set<Txn*>::iterator t = activeSet.begin(); t != activeSet.end() && !validationFailure; ++t) {
       
         // Check for conflicts between txn's writeset and t's readset or writeset.
         for (set<Key>::iterator itr = txn->writeset_.begin(); itr != txn->writeset_.end(); ++itr) {
