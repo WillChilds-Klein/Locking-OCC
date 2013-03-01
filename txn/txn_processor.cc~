@@ -204,6 +204,7 @@ void TxnProcessor::RunOCCScheduler() {
         }
       } else if (txn->Status() == COMPLETED_A) {
         txn->status_ = ABORTED;
+        txn_results_.Push(txn);  // Return result to client.
       } else {
         // Invalid TxnStatus!
         DIE("Completed Txn has invalid TxnStatus: " << txn->Status());
@@ -214,8 +215,8 @@ void TxnProcessor::RunOCCScheduler() {
 
 void TxnProcessor::RunOCCParallelScheduler() {
   Txn *txn;
-  const int n = 10;  // For now.
-  const int m = 5;  // For now.
+  const int n = 2;  // For now.
+  const int m = 8;  // For now.
   int i;
   set<Txn*> activeSetCopy;
 
@@ -223,7 +224,7 @@ void TxnProcessor::RunOCCParallelScheduler() {
     // Start processing the next incoming transaction request.
     if (txn_requests_.Pop(&txn)) {
       txn->occ_start_time_ = GetTime();
-      tp_.RunTask( // Run the transaction in a new thread.
+      tp_.RunTask(  // Run the transaction in a new thread.
         new Method<TxnProcessor, void, Txn*>(
           this, &TxnProcessor::ExecuteTxn, txn));
     }
@@ -300,7 +301,7 @@ void TxnProcessor::ValidateTxnParallel(Txn* txn, set<Txn*> activeSet) {
               itr != txn->writeset_.end(); ++itr) {
           if ((*t)->readset_.find(*itr) != (*t)->readset_.end() ||
               (*t)->writeset_.find(*itr) != (*t)->writeset_.end()) {
-            validationFailure = true; // A conflict was found.
+            validationFailure = true;  // A conflict was found.
             break;
           }
         }
@@ -319,6 +320,7 @@ void TxnProcessor::ValidateTxnParallel(Txn* txn, set<Txn*> activeSet) {
                                 // to be validated.
   } else if (txn->Status() == COMPLETED_A) {
     txn->status_ = ABORTED;
+    txn_results_.Push(txn);  // Return result to client.
   } else {
     // Invalid TxnStatus!
     DIE("Completed Txn has invalid TxnStatus: " << txn->Status());

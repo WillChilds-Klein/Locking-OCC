@@ -1,0 +1,173 @@
+Analysis
+Jacob Evelyn and Will Childs-Klein
+
+Note: we were unable to find a zoo machine not being used. The best we could
+find was one with two other users. Running uptime before and after the test
+yielded:
+3 users,  load average: 0.39, 0.16, 0.09
+3 users,  load average: 0.33, 0.66, 0.38
+
+1) Carpe datum.
+
+== bin/txn/txn_processor_test ==
+			    Average Transaction Duration
+		0.1ms		1ms		10ms		100ms
+Read only
+ Serial   	5753.49		928.455		98.9198		9.96228	
+ Locking A	71506.2		41590.9		4456.18		379.836	
+ Locking B	56524.5		69726.3		9594.98		942.481	
+ OCC      	75336.9		85638.1		9602.75		929.291	
+ OCC-P    	50133.9		66369.1		9515.21		923.999	
+1% contention
+ Serial   	5448.84		916.764		98.9207		10.0383	
+ Locking A	22523.1		11034.9		1389.66		114.061	
+ Locking B	21224.3		19804.5		3721.14		326.641	
+ OCC      	23014.3		22177.8		4012.7		359.712	
+ OCC-P    	17755.9		17405		3888.32		346.719	
+10% contention
+ Serial   	5515.45		920.36		99.4436		10.032	
+ Locking A	8744.27		2060.39		224.079		22.6148	
+ Locking B	21534.4		18170		2799.08		172.451	
+ OCC      	10112.4		8240.75		1015.29		84.9132	
+ OCC-P    	7758.8		5072.84		898		87.5175	
+65% contention
+ Serial   	5555.36		923.133		98.8981		9.93153	
+ Locking A	4383.26		890.794		100.17		10.1679	
+ Locking B	16989		7774.48		856.691		66.8397	
+ OCC      	2356.77		1670.99		182.661		17.706	
+ OCC-P    	1305.65		736.845		142.558		16.2559	
+100% contention
+ Serial   	5639.54		931.219		99.0942		9.96935	
+ Locking A	4915.08		905.232		99.2998		9.93129	
+ Locking B	4851.25		905.101		98.5291		10.0702	
+ OCC      	1899.43		921.146		100.463		10.0078	
+ OCC-P    	1388.46		491.259		93.0927		9.97598	
+High contention mixed read/write
+ Serial   	10674.5		5145.46		937.47		100.925	
+ Locking A	10995.1		5692.84		994.89		87.7474	
+ Locking B	12527.8		13174.6		9114.82		866.463	
+ OCC      	5143.54		7240.92		2165.63		851.859	
+ OCC-P    	3333.83		2561.44		1429.84		796.271
+
+2) Simulations are doomed to succeed.
+
+Using a sleep as a simulation for transaction costs works because in a real
+system, a high transaction cost yields longer transactions and/or transactions
+with more conflicts. By making transactions sleep, we increase the probability
+that two transactions accessing the same data will overlap (for OCC) or be in
+contention (for locking).
+
+However, this approximation doesn't accurately impact the CPU. In reality, a
+complex transaction will take longer because of computational time, whereas by
+simply adding a sleep we don't push the CPU the same way. A better approximation
+would thus be to have some arbitrary CPU computations be performed in varying
+degrees instead of putting a transaction to sleep.
+
+3) To B or not to B
+
+4) OCCam's Razor
+
+In this simulation, OCC significantly outperformed OCC-P. Though this is not
+what we had expected, it is not unreasonable. This result is likely because
+OCC-P introduces extra computations--checking against the active set for each
+validation--for what ultimately is a similar process of validating many parallel
+computations. The benefit of parallelizing validations may be insignificant for
+the following reasons:
+  -More threading means more overhead, especially when threads are being created
+    and destroyed on a short time scale. This is evidenced by the fact that OCC
+    outperforms OCC-P much more with faster transactions.
+  -Once the number of active threads exceeds the number that the hardware can
+    handle, it may be more efficient to simply do serial calculations.
+
+In a real-world system, I would imagine that OCC-P might take the upper hand
+more often, because the hardware used would likely be much more powerful than
+the machine on which the tests were run, and better able to scale for more
+threading.
+
+An optimal workload for OCC would be one in which there are many transactions,
+each with a very short running time, such that we can avoid the overhead of
+multithreaded validation present in OCC-P. An optimal workload for OCC would be
+one in which there are fewer, longer transactions, as for this the parallel
+validation could be beneficial. And, of course, for Optimistic Concurrency
+Control schemes in general, an optimal workload is one in which there are
+no transaction conflicts at all!
+
+After testing several combinations of n and m values, we ultimately settled on
+using n = 1 and m = 8. The reasoning behind this is that as the proportion of
+n:m rises, the number of threads you're adding to the active set increases
+relative to the number of threads you're removing, as you're starting
+transactions at a faster rate than you're closing them. This increase in the
+active set size means there will be more conflicts and thus more invalid
+transactions that must be re-run, decreasing the throughput of the system.
+
+We used the pseudocode given in the assignment specifications. This
+pseudocode could potentially be improved by putting a transaction's validation
+in the same thread as the transaction's execution. This would still allow for
+parallel validation, but it might allow for more valid transactions as we would
+decrease the chance of active set conflicts since there is less time between
+execution and validation in which the active set can be changed to make a
+transaction invalid.
+
+5) OCC...oops
+
+k = maximum number of parallel transactions
+d = time to complete a single transaction
+k/d = maximum possible throughput
+1/d = maximum possible throughput for transactions with 100% contention
+
+c_w = write-write contention rate = 66.95%
+n reads per transaction
+n writes per transaction
+10*n total key-value pairs to be read/written
+all transactions execute simultaneously
+
+Let's enumerate the first three key-value pairs to be X, Y, and Z.
+We can deduce:
+The probability that transaction A reads X is n/10n, or 1/10.
+The probability that transaction B writes X is n/10n, or 1/10.
+The probability that transaction A reads X and B writes X is thus
+  (1/10) * (1/10) = 1/100.
+The probability that transaction A reads Y and B writes Y is thus
+  also 1/100.
+Since there are 10*n possible key-value pairs, the probability that
+  A and B have some read conflict is (1/100)*(10*n) = n/10.
+
+The probability that any two transactions have a conflict (read or write) is
+  thus n/10 + 0.6695.
+The probability that a given transaction T is invalid is the probability that
+  T conflicts with A, plus the probability that T conflicts with B, etc.
+  Since there are k simultaneous transactions, the probability that a given
+  transaction T aborts is (n/10 + 0.6695)*k.
+When we factor in the fact that a transaction can restart, this means that
+  for transactions that restart, there will be fewer other transactions to
+  compete with, as some will have completed. So the more times a transaction
+  restarts, the smaller the effective k would be in the equation. However, here
+  we will assume that there is a steady stream of transactions, so when one
+  transaction is committed a new one is spawned. Thus, k will remain the same
+  and the probability that a given transaction aborts is (n/10 + 0.6695)*k,
+  which is the abort percentage.
+
+In parallel validation, we can no longer assume that validation is occurring
+  all at once, instantly and simultaneously. This means that there is now a
+  greater chance of validation conflicts, as the time spent validating is
+  time in which transactions can overlap in the active set. Let us assume an
+  active set size of k/2 for each transaction; that is, for any given
+  transaction, 50% of the total concurrent transactions started before it.
+  This is a pretty reasonable assumption to make assuming standard transaction
+  times.
+So, for transaction T, the probability that transaction A is in T's active set
+  is 1/2.
+The probability that a transaction A in T's active set reads key-value pair X is
+  n/10n, or 1/10.
+The probability that a transaction A in T's active set writes X is n/10n, or
+  1/10.
+The probability that T writes X is n/10n, or 1/10.
+The probability that a transaction A in T's active set reads X and T writes X is
+  thus (1/2)*(1/10)*(1/10) = 1/200.
+The probability that a transaction A in T's active set writes X and T writes X
+  is thus (1/2)*(1/10)*(1/10) = 1/200.
+The probability that a transaction A in T's active set has a read or write in
+  T's write set is thus (1/200) + (1/200) = 1/100.
+The probability that some transaction in T's active set has a read or write in
+  T's write set is thus k*(1/100).
+The probability that some transaction conflicts

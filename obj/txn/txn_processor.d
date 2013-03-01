@@ -1,6 +1,5 @@
-obj/txn/txn_processor_test.o: txn/txn_processor_test.cc \
- txn/txn_processor.h /usr/include/c++/4.6/deque \
- /usr/include/c++/4.6/bits/stl_algobase.h \
+obj/txn/txn_processor.o: txn/txn_processor.cc txn/txn_processor.h \
+ /usr/include/c++/4.6/deque /usr/include/c++/4.6/bits/stl_algobase.h \
  /usr/include/c++/4.6/x86_64-suse-linux/bits/c++config.h \
  /usr/include/bits/wordsize.h \
  /usr/include/c++/4.6/x86_64-suse-linux/bits/os_defines.h \
@@ -115,5 +114,4 @@ obj/txn/txn_processor_test.o: txn/txn_processor_test.cc \
  /usr/include/c++/4.6/bits/stl_heap.h \
  /usr/include/c++/4.6/bits/stl_queue.h utils/mutex.h \
  utils/static_thread_pool.h utils/thread_pool.h utils/task.h \
- /usr/include/c++/4.6/cassert /usr/include/c++/4.6/typeinfo \
- txn/txn_types.h utils/testing.h
+ /usr/include/c++/4.6/cassert /usr/include/c++/4.6/typeinfo

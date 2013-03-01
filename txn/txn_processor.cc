@@ -204,6 +204,7 @@ void TxnProcessor::RunOCCScheduler() {
         }
       } else if (txn->Status() == COMPLETED_A) {
         txn->status_ = ABORTED;
+        txn_results_.Push(txn);  // Return result to client.
       } else {
         // Invalid TxnStatus!
         DIE("Completed Txn has invalid TxnStatus: " << txn->Status());
@@ -214,8 +215,8 @@ void TxnProcessor::RunOCCScheduler() {
 
 void TxnProcessor::RunOCCParallelScheduler() {
   Txn *txn;
-  const int n = 10;  // For now.
-  const int m = 5;  // For now.
+  const int n = 1;  // For now.
+  const int m = 8;  // For now.
   int i;
   set<Txn*> activeSetCopy;
 
@@ -319,6 +320,7 @@ void TxnProcessor::ValidateTxnParallel(Txn* txn, set<Txn*> activeSet) {
                                 // to be validated.
   } else if (txn->Status() == COMPLETED_A) {
     txn->status_ = ABORTED;
+    txn_results_.Push(txn);  // Return result to client.
   } else {
     // Invalid TxnStatus!
     DIE("Completed Txn has invalid TxnStatus: " << txn->Status());
