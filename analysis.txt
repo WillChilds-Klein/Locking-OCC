@@ -65,6 +65,15 @@ degrees instead of putting a transaction to sleep.
 
 3) To B or not to B
 
+Our version of 2PL is similar to that described in the paper insofar that they 
+classify EXCLUSIVE and SHARED txn types, both implement "well formed" txns (as 
+defined by the paper). They differ in that our version doesn't enforce the main 
+rule of "Once a txn has released a lock, it is not allowed to obtain any 
+additional locks". Therefore it has no explicit growing or shrinking phase.
+Also, the two methods request locks differently. Our implementation requires 
+atomic lock requests, whereas true 2PL does not. Both enforce serializability.
+I think that true 2PL would perform better.
+
 4) OCCam's Razor
 
 In this simulation, OCC significantly outperformed OCC-P. Though this is not
